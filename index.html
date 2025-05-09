@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" href="assets/image/favicon.ico" type="image/x-icon">
+  <title>WEGChina - 供应商物料需求查看</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background-color: #f4f6f8;
+      color: #333;
+    }
+
+    header {
+      background-color: #2c3e50;
+      padding: 1rem 2rem;
+      color: white;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 1.5rem;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 0.75rem;
+      font-size: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+      margin-bottom: 1rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background-color: white;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    thead {
+      background-color: #34495e;
+      color: white;
+    }
+
+    th, td {
+      padding: 0.75rem;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+
+    tr:hover {
+      background-color: #ecf0f1;
+    }
+
+    .pagination {
+      display: flex;
+      justify-content: center;
+      margin-top: 2rem;
+    }
+
+    .pagination button {
+      margin: 0 0.25rem;
+      padding: 0.5rem 0.75rem;
+      border: none;
+      background-color: #3498db;
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .pagination button.active {
+      background-color: #2980b9;
+    }
+
+    .footer {
+      text-align: center;
+      padding: 1rem;
+      font-size: 0.9rem;
+      color: #888;
+      border-top: 1px solid #eee;
+      margin-top: 3rem;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>WEGChina - 物料需求查看</h1>
+  </header>
+
+  <div class="container">
+    <h2 id="supplierName"></h2>
+
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="输入物料编号或名称进行搜索..." />
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>物料编号</th>
+          <th>物料名称</th>
+          <th>当月需求</th>
+          <th>下月需求</th>
+          <th>下下月需求</th>
+          <th>单位</th>
+        </tr>
+      </thead>
+      <tbody id="materialTableBody">
+        <!-- 数据将动态插入 -->
+      </tbody>
+    </table>
+
+  </div>
+
+  <div class="footer">
+    &copy; 2025 WEG-China 供应链管理 - 物料需求外部查询网站. All rights reserved.
+  </div>
+
+  <script>
+
+    const supplierCode = window.location.search.substring(1);
+
+    const API_URL = 'http://localhost:3000/supplier-demand/' + supplierCode; // 替换为你的API地址
+
+    let allData = [];
+
+    async function fetchData() {
+      try {
+        const response = await fetch(API_URL);
+        if (!response.ok) throw new Error('网络错误');
+        const result = await response.json();
+        console.log('获取数据成功:', result);
+        allData = result.demand || [];
+        supplierName = result.supplierName || '';
+        renderTable(allData,supplierName);
+      } catch (error) {
+        console.error('获取数据失败:', error);
+        alert('无法加载物料需求数据，请检查网络连接或联系采购员。');
+      }
+    }
+
+    function renderTable(data) {
+      const tbody = document.getElementById('materialTableBody');
+      tbody.innerHTML = '';
+
+      // 设置供应商名称
+      const supplierNameElement = document.getElementById('supplierName');
+      if (supplierName) {
+        supplierNameElement.innerHTML = `${supplierName}:<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;请查看物料需求信息，数据仅供参考，请以采购员实际下单为准！`;
+    } else {
+        supplierNameElement.textContent = '无法加载物料需求数据，请检查网络连接或联系采购员。';
+    }
+
+      const pageData = data;
+
+      if (pageData.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">暂无数据</td></tr>';
+        return;
+      }
+
+      pageData.forEach((item, index) => {
+        const row = `
+          <tr>
+            <td>${index + 1}</td>
+            <td>${item.material || '-'}</td>
+            <td>${item.description || '-'}</td>
+            <td>${item.currentMonthDemand || 0}</td>
+            <td>${item.nextMonthDemand || 0}</td>
+            <td>${item.nextNextMonthDemand || 0}</td>
+            <td>${item.unit || '-'}</td>
+          </tr>`;
+        tbody.insertAdjacentHTML('beforeend', row);
+      });
+    }
+
+
+    document.getElementById('searchInput').addEventListener('input', function () {
+      const keyword = this.value.toLowerCase();
+      if (!keyword) {
+        renderTable(allData);
+        return;
+      }
+
+      const filtered = allData.filter(item =>
+        item.material?.toLowerCase().includes(keyword) ||
+        item.name?.toLowerCase().includes(keyword)
+      );
+      renderTable(filtered);
+    });
+
+    // 初始化加载数据
+    fetchData();
+  </script>
+
+</body>
+</html>
